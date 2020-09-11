@@ -1,0 +1,15 @@
+
+name: "uva-analytics"
+output_dir: "docs"
+navbar:
+  title: "Virginia Cavaliers"
+  left:
+      - text: "Home"
+        href: index.html
+      - text: "2020 NCAA Stats"
+        href: speed_dis.html
+
+
+output:
+  html_document:
+    theme: cosmo
