@@ -9,7 +9,7 @@ navbar:
       - text: "2020 NCAA Stats"
         href: tables_2020.html
       - text: "2019 NCAA Stats"
-        href: tables_2020.html
+        href: tables_2019.html
 
 
 output:
