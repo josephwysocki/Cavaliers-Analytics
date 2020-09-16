@@ -8,8 +8,8 @@ Welcome to the Virginia Cavaliers website. Here is where reports and analysis wi
  
 
 #### **Site Navigation**  
-* [2020 NCAA Stats](stat_spreadsheet_2020.html)
-* [2019 NCAA Stats](tables_2019.html)
+* [2020 NCAA Stats](stat_spreadsheet_2020new.html)
+* [2019 NCAA Stats](stat_spreadsheet_2019new.html)
 <br>  
 
 #### **Interactive Charts**  
