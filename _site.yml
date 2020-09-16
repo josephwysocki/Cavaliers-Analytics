@@ -12,6 +12,7 @@ navbar:
         href: stat_spreadsheet_2019new.html
 
 
+
 output:
   html_document:
     theme: cosmo
