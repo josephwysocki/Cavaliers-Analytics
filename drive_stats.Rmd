@@ -1,0 +1,428 @@
+<br>  
+
+
+## **Drive Statistics**
+
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+# {.tabset}
+
+```{r setup, include=FALSE}
+#Load packages
+easypackages::libraries("tidyverse", "httr", "reactable", "htmltools", "jsonlite", "readr", "dplyr", "magick", "stringr")
+
+#color stuff for tables 
+my_api_key <-'5da2a45fee5e9b87fcbcc2fbca2944a9491ce0b462968498e8eae560b55b109e'
+
+get_jwt <- POST("https://api.profootballfocus.com/auth/login",
+                query=list('api_key'=my_api_key))
+get_jwt
+my_jwt <- content(get_jwt)$jwt[1]
+# my_jwt
+
+test <- GET(paste0('https://api.profootballfocus.com/v1/video/ncaa/2020/plays'),
+            add_headers(Authorization = paste0('Bearer ', my_jwt),
+                        'Accept-Encoding' = 'gzip',
+                        'Content-Encoding' = 'gzip'),
+             encode = "json")
+
+test$status_code # as long as this says 200, you're good to go
+
+df <- content(test, "text") %>% 
+  fromJSON(flatten = T)
+
+this.content.df <- do.call(what = "rbind",
+                           args = lapply(df, as.data.frame))
+
+this.content.df <- this.content.df[,sort(names(this.content.df))]
+
+this.content.df <- this.content.df %>% arrange(game_id, play_id)
+pbp <- this.content.df %>% arrange(game_id, play_id)
+
+pbp$field_position <- as.numeric(pbp$field_position)
+pbp$NewFPos = ifelse(pbp$field_position < 0, 100+pbp$field_position, pbp$field_position)
+pbp$Gain.Loss = ifelse(pbp$no_play == 1, NA,
+                                       ifelse(!is.na(pbp$interception), NA,
+                                              ifelse(!is.na(pbp$fumble), pbp$gain_loss,
+                                                     ifelse(!is.na(pbp$penalty), pbp$gain_loss,
+                                                            pbp$gain_loss_net))))
+pbp$DrivePlayNext = c(pbp$drive_play[-c(1)],0)
+pbp$BigPlay = ifelse(pbp$Gain.Loss >= 15, 1, 0)
+pbp$ChunkPlay = ifelse(pbp$Gain.Loss >= 10, 1,0)
+pbp$TFL = ifelse(pbp$Gain.Loss < 0 & is.na(pbp$sack) & pbp$primary_run_concept != "UNDEFINED" & pbp$no_play != 1, 1, 0)
+pbp$uniqueID = paste(pbp$game_id, pbp$offense, pbp$drive, sep="")
+pbp$uniqueOpponentID = paste(pbp$game_id, pbp$defense, pbp$drive, sep="")
+pbp$FieldZone = ifelse(pbp$NewFPos > 90, "CO",
+                                       ifelse(pbp$NewFPos <= 90 & pbp$NewFPos > 40, "OF",
+                                              ifelse(pbp$NewFPos <= 40 & pbp$NewFPos > 20, "SZ", "RZ")))
+pbp$Down.Next = c(pbp$down[-c(1)],0)
+pbp$Qtr.Next = c(pbp$quarter[-c(1)],0)
+pbp$Is.Halftime = ifelse(pbp$quarter == 2 & pbp$Qtr.Next == 3, "Y", "N")
+pbp$Is.EndGame = ifelse(pbp$quarter == 4 & pbp$Qtr.Next == 1, "Y", "N")
+pbp$uniqueOffGameID = paste(pbp$game_id, pbp$offense, sep = ",")
+pbp$uniqueDefGameID = paste(pbp$game_id, pbp$defense, sep = ",")
+pbp$PassArea = ifelse(pbp$pass_depth < 0 & pbp$pass_zone %in% c("1L", "2L", "3L"), 1,
+                ifelse(pbp$pass_depth < 0 & pbp$pass_zone %in% c("4"), 2,
+                 ifelse(pbp$pass_depth < 0 & pbp$pass_zone %in% c("5R", "6R", "7R"), 3,
+                  ifelse(pbp$pass_depth >= 0 & pbp$pass_depth < 5 & pbp$pass_zone %in% c("1L", "2L", "3L"), 4,
+                   ifelse(pbp$pass_depth >= 0 & pbp$pass_depth < 5 & pbp$pass_zone %in% c("4"), 5,
+                    ifelse(pbp$pass_depth >= 0 & pbp$pass_depth < 5 & pbp$pass_zone %in% c("5R", "6R", "7R"), 6,
+                     ifelse(pbp$pass_depth >= 5 & pbp$pass_depth < 15 & pbp$pass_zone %in% c("1L", "2L", "3L"), 7,
+                      ifelse(pbp$pass_depth >= 5 & pbp$pass_depth < 15 & pbp$pass_zone %in% c("4"), 8,
+                       ifelse(pbp$pass_depth >= 5 & pbp$pass_depth < 15 & pbp$pass_zone %in% c("5R", "6R", "7R"), 9,
+                        ifelse(pbp$pass_depth >= 15 & pbp$pass_depth < 25 & pbp$pass_zone %in% c("1L", "2L", "3L"), 10,
+                         ifelse(pbp$pass_depth >= 15 & pbp$pass_depth < 25 & pbp$pass_zone %in% c("4"), 11,
+                          ifelse(pbp$pass_depth >= 15 & pbp$pass_depth < 25 & pbp$pass_zone %in% c("5R", "6R", "7R"), 12,
+                           ifelse(pbp$pass_depth >= 25 & pbp$pass_zone %in% c("1L", "2L", "3L"), 13,
+                            ifelse(pbp$pass_depth >= 25 & pbp$pass_zone %in% c("4"), 14,
+                             ifelse(pbp$pass_depth >= 25 & pbp$pass_zone %in% c("5R", "6R", "7R"), 15, NA)))))))))))))))
+pbp$Drive.End.Next = c(pbp$drive_end_event[-c(1)],0)
+
+pbp$Turnover = ifelse(pbp$drive_end_event == "FUMBLE" & pbp$DrivePlayNext == 1, 1,
+                ifelse(pbp$drive_end_event == "INTERCEPTION" & pbp$DrivePlayNext == 1, 1,
+                 ifelse(pbp$drive_end_event == "INTERCEPTION-TD" & pbp$Drive.End.Next != "INTERCEPTION-TD", 1,
+                  ifelse(pbp$drive_end_event == "FUMBLE-TD" & pbp$Drive.End.Next != "FUMBLE-TD", 1, NA))))
+
+pbp$Efficient = ifelse(!is.na(pbp$Turnover), 0,
+                 ifelse(pbp$no_play == 1, NA,
+                  ifelse(pbp$down==1, 
+                   ifelse(pbp$Gain.Loss >= (pbp$distance*.4), 1, 0),
+                    ifelse(pbp$down==2, 
+                     ifelse(pbp$Gain.Loss >= (pbp$distance*.5), 1, 0),
+                      ifelse(pbp$down==3, 
+                       ifelse(pbp$Gain.Loss >= pbp$distance, 1, 0),
+                        ifelse(pbp$down==4, 
+                         ifelse(pbp$Gain.Loss >= pbp$distance, 1, 0), NA))))))
+pbp$FieldBoundary = ifelse(pbp$hash == "L" & pbp$pass_zone %in% c("1L", "2L", "3L"),"B",
+                     ifelse(pbp$hash == "L" & pbp$pass_zone %in% c("5R", "6R", "7R"),"F",
+                      ifelse(pbp$hash == "R" & pbp$pass_zone %in% c("1L", "2L", "3L"),"F",
+                       ifelse(pbp$hash == "R" & pbp$pass_zone %in% c("5R", "6R", "7R"),"B",
+                        ifelse(pbp$pass_zone == "4", "M",NA)))))
+pbp$PassDepthZones = ifelse(pbp$pass_depth <= 0, 1,
+                      ifelse(pbp$pass_depth > 0 & pbp$pass_depth <= 5, 2,
+                       ifelse(pbp$pass_depth > 5 & pbp$pass_depth <= 10, 3,
+                        ifelse(pbp$pass_depth > 10 & pbp$pass_depth <= 15, 4,
+                         ifelse(pbp$pass_depth > 15 & pbp$pass_depth <= 20, 5,
+                          ifelse(pbp$pass_depth > 20 & pbp$pass_depth <= 25, 6,
+                           ifelse(pbp$pass_depth > 25 & pbp$pass_depth <= 30, 7,
+                            ifelse(pbp$pass_depth > 30 & pbp$pass_depth <= 35, 8,
+                             ifelse(pbp$pass_depth > 35 & pbp$pass_depth <= 40, 9,
+                              ifelse(pbp$pass_depth > 40 & pbp$pass_depth <= 45, 10,
+                               ifelse(pbp$pass_depth > 45 & pbp$pass_depth <= 50, 11, 
+                                ifelse(pbp$pass_depth > 50, 12, NA))))))))))))
+
+pbp$PassWidthZones = ifelse(pbp$pass_width < 8, 1,
+                      ifelse(pbp$pass_width > 7 & pbp$pass_width < 15, 2,
+                       ifelse(pbp$pass_width > 14 & pbp$pass_width < 22, 3,
+                        ifelse(pbp$pass_width > 21 & pbp$pass_width < 32, 4,
+                         ifelse(pbp$pass_width > 31 & pbp$pass_width < 39, 5,
+                          ifelse(pbp$pass_width > 38 & pbp$pass_width < 46, 6, 7))))))
+
+pbp$PassZones = pbp$PassWidthZones + ((pbp$PassDepthZones-1)*7)
+
+pbp$PositionTarget = ifelse(pbp$pass_receiver_target_position %in% c("TE-iL", "TE-iR", "TE-L", "TE-R", "TE-oL", "TE-oR"), "TE",
+                      ifelse(pbp$pass_receiver_target_position %in% c("RWR", "LWR"), "WR",
+                       ifelse(pbp$pass_receiver_target_position %in% c("HB", "HB-L", "HB-R", "FB", "FB-L", "FB-R"), "RB",
+                        ifelse(pbp$pass_receiver_target_position %in% c("SLoWR", "SLWR", "SRiWR", "SRWR", "SLiWR", "SRoWR"), "Slot", NA))))
+
+pbp$DownType = ifelse(pbp$down == 1, "SD",
+                ifelse(pbp$down == 2 & pbp$distance < 8, "SD",
+                 ifelse(pbp$down == 3 & pbp$distance < 5, "SD",
+                  ifelse(pbp$down == 4 & pbp$distance < 5, "SD", "PD" ))))
+pbp$pass_blocking_number <- substr(pbp$pass_blocking_players, 1, 1)
+pbp$play_end_field_position_number <- as.numeric(substr(pbp$play_end_field_position, 2, 3))
+
+pbp$DrivePoints = ifelse(pbp$drive_end_event == "TOUCHDOWN", 7,
+                   ifelse(pbp$drive_end_event == "FIELD GOAL", 3,
+                    ifelse(pbp$drive_end_event == "INTERCEPTION-TD", -7,
+                     ifelse(pbp$drive_end_event == "FUMBLE-TD", -7, 
+                      ifelse(pbp$drive_end_event == "SAFETY", -2, 0)))))
+pbp$DriveSuccess = ifelse(pbp$drive_end_event == "TOUCHDOWN" | pbp$drive_end_event == "FIELD GOAL" | pbp$drive_end_event == "MISSED FG", 1,0)
+
+pbp$DriveReturnStart = lag(pbp$return_yards)
+pbp$SpecialTeamsDriveStart = lag(pbp$special_teams_type)
+pbp$PreviousGainLoss = lag(pbp$gain_loss_net)
+
+All_Team_Names <- read.csv("New Team Names.csv")
+names(All_Team_Names)[names(All_Team_Names)=="ï..TeamCode"] <- "TeamCode"
+NCAA_Team_Names <- All_Team_Names %>% filter(NFL != 1) %>% select(TeamCode, Team.Name, Conf, PrimaryColor, SecondaryColor, Logo)
+Teams <- All_Team_Names %>% filter(FBS == 1) %>% select(TeamCode, Team.Name, Conf, PrimaryColor, SecondaryColor, Logo)
+FBSSchools <- Teams$TeamCode
+
+dat <- Teams %>% separate(Logo, c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j"), sep = "/") 
+
+dat1 <- dat %>% mutate(j = str_replace_all(dat$j, "[^[:alnum:]]", "")) %>% separate(j, c("teamcode", "junk"), sep = "p") %>% select(-c("a", "b", "c", "d", "e", "f", "g", "h", "i", "junk")) %>% rename(TeamName = Team.Name)
+
+dat3 <- All_Team_Names %>% separate(Logo, c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j"), sep = "/") 
+
+dat2 <- dat %>% mutate(j = str_replace_all(dat$j, "[^[:alnum:]]", "")) %>% separate(j, c("teamcode", "junk"), sep = "p") %>% select(-c("a", "b", "c", "d", "e", "f", "g", "h", "i", "junk")) %>% rename(TeamName = Team.Name)
+
+
+pbp <- merge(pbp, NCAA_Team_Names, by.x = "offense", by.y = "TeamCode", sort = FALSE)
+pbp <- merge(pbp, NCAA_Team_Names, by.x = "defense", by.y = "TeamCode", sort = FALSE)
+colnames(pbp)[colnames(pbp) == "Team.Name.x"] = "OffTeamName"
+colnames(pbp)[colnames(pbp) == "Team.Name.y"] = "DefTeamName"
+colnames(pbp)[colnames(pbp) == "Logo.x"] = "OffTeamLogo"
+colnames(pbp)[colnames(pbp) == "Logo.y"] = "DefTeamLogo"
+colnames(pbp)[colnames(pbp) == "Conf.x"] = "OffTeamConference"
+colnames(pbp)[colnames(pbp) == "Conf.y"] = "DefTeamConference"
+colnames(pbp)[colnames(pbp) == "PrimaryColor.x"] = "OffPrimaryColor"
+colnames(pbp)[colnames(pbp) == "PrimaryColor.y"] = "DefPrimaryColor"
+colnames(pbp)[colnames(pbp) == "SecondaryColor.x"] = "OffSecondaryColor"
+colnames(pbp)[colnames(pbp) == "SecondaryColor.y"] = "DefSecondaryColor"
+pbp <- pbp %>% mutate(OffTeamName = as.character(OffTeamName), DefTeamName = as.character(DefTeamName), OffTeamLogo = as.character(OffTeamLogo),
+                      DefTeamLogo = as.character(DefTeamLogo), OffTeamConference = as.character(OffTeamConference), DefTeamConference = as.character(DefTeamConference),
+                      OffPrimaryColor = as.character(OffPrimaryColor), DefPrimaryColor = as.character(DefPrimaryColor), OffSecondaryColor = as.character(OffSecondaryColor),
+                      DefSecondaryColor = as.character(DefSecondaryColor))
+
+NoKicks = subset(pbp, !is.na(pbp$drive))
+FBSvsFBS = subset(NoKicks, offense %in% FBSSchools & defense %in% FBSSchools)
+FBSvsFBSNoGarbage = subset(FBSvsFBS, garbage_time == 0)
+FBSOff = subset(NoKicks, offense %in% FBSSchools)
+FBSDef = subset(NoKicks, defense %in% FBSSchools)
+TotalPlaysOff = FBSOff %>% group_by(OffTeamName) %>% summarize(TotalPlaysOff = n()) %>% rename(TeamName = OffTeamName)
+TotalPlaysDef = FBSDef %>% group_by(DefTeamName) %>% summarize(TotalPlaysDef = n()) %>% rename(TeamName = DefTeamName)
+
+
+MostOffDriveThings <- FBSOff %>% group_by(uniqueID) %>% summarize(Plays = n(), Yards = sum(Gain.Loss, na.rm = TRUE), YPP = mean(Gain.Loss, na.rm = TRUE),
+                                                                  AvgEPA = mean(expected_points_added, na.rm = TRUE), Efficiency = mean(Efficient, na.rm = TRUE), 
+                                                                  FirstDowns = sum(first_down_gained, na.rm = TRUE), LargeGain = max(Gain.Loss, na.rm = TRUE),
+                                                                  Sacks = sum(!is.na(sack)), TFL = sum(TFL, na.rm = TRUE), ForcedFumbles = sum(!is.na(forced_fumble)),
+                                                                  Interception = sum(!is.na(interception)), BP = sum(incompletion_type == "BP", na.rm = TRUE), PD = sum(incompletion_type == "PD", na.rm = TRUE),
+                                                                  FarthestFPos = min(NewFPos, na.rm = TRUE)) %>% 
+  mutate(TotalTFL = Sacks + TFL, Havoc = TotalTFL + ForcedFumbles + PD + BP, RedZoneOpportunity = ifelse(FarthestFPos <=20, 1, 0)) %>% select(-BP,PD,FarthestFPos)
+
+OffDriveBigPlays <- FBSOff %>% group_by(uniqueID) %>% filter(Gain.Loss >= 15) %>% summarize(BigPlays = n())
+FirstDownEfficiency <- FBSOff %>% group_by(uniqueID) %>% filter(down == 1) %>% summarize(FirstDownEfficiency = mean(Efficient, na.rm = TRUE))
+SecondDownEfficiency <- FBSOff %>% group_by(uniqueID) %>% filter(down == 2) %>% summarize(SecondDownEfficiency = mean(Efficient, na.rm = TRUE))
+ThirdDownEfficiency <- FBSOff %>% group_by(uniqueID) %>% filter(down == 3) %>% summarize(ThirdDownEfficiency = mean(Efficient, na.rm = TRUE))
+ScoringOpportunity <- FBSOff %>% group_by(uniqueID) %>% filter(down == 1) %>% summarize(FarthestFPos = min(NewFPos, na.rm = TRUE)) %>% mutate(ScoringOpportunity = ifelse(FarthestFPos <=40, 1, 0)) %>% select(-FarthestFPos)
+
+
+
+RestofOffDriveThings <- FBSOff %>% group_by(uniqueID) %>% filter(drive_play == 1) %>% select(game_id, OffTeamName, DefTeamName, drive, NewFPos, drive_start_event, SpecialTeamsDriveStart, PreviousGainLoss, drive_end_event, score_differential, drive_end_field_position,
+                                                                                             DrivePoints, two_minute, DriveSuccess, DriveReturnStart) %>% mutate(ScoringDrive = ifelse(DrivePoints > 0, 1, 0))
+
+OffenseDriveDataFrame <- merge(MostOffDriveThings, RestofOffDriveThings, all=TRUE) %>% merge(OffDriveBigPlays, all = TRUE) %>% merge(FirstDownEfficiency, all = TRUE) %>% merge(SecondDownEfficiency, all = TRUE) %>%
+  merge(ThirdDownEfficiency, all = TRUE) %>% merge(ScoringOpportunity, all = TRUE)
+
+MostDefDriveThings <- FBSDef %>% group_by(uniqueOpponentID) %>% summarize(Plays = n(), Yards = sum(Gain.Loss, na.rm = TRUE), YPP = mean(Gain.Loss, na.rm = TRUE),
+                                                                          AvgEPA = mean(expected_points_added, na.rm = TRUE), Efficiency = mean(Efficient, na.rm = TRUE), 
+                                                                          FirstDowns = sum(first_down_gained, na.rm = TRUE), LargeGain = max(Gain.Loss, na.rm = TRUE),
+                                                                          Sacks = sum(!is.na(sack)), TFL = sum(TFL, na.rm = TRUE), ForcedFumbles = sum(!is.na(forced_fumble)),
+                                                                          Interception = sum(!is.na(interception)), BP = sum(incompletion_type == "BP", na.rm = TRUE), PD = sum(incompletion_type == "PD", na.rm = TRUE),
+                                                                          FarthestFPos = min(NewFPos, na.rm = TRUE)) %>% 
+  mutate(TotalTFL = Sacks + TFL, Havoc = TotalTFL + ForcedFumbles + PD + BP, RedZoneOpportunity = ifelse(FarthestFPos <=20, 1, 0)) %>% select(-BP,PD,FarthestFPos)
+
+DefDriveBigPlays <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(Gain.Loss >= 15) %>% summarize(BigPlays = n())
+FirstDownEfficiency <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(down == 1) %>% summarize(FirstDownEfficiency = mean(Efficient, na.rm = TRUE))
+SecondDownEfficiency <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(down == 2) %>% summarize(SecondDownEfficiency = mean(Efficient, na.rm = TRUE))
+ThirdDownEfficiency <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(down == 3) %>% summarize(ThirdDownEfficiency = mean(Efficient, na.rm = TRUE))
+ScoringOpportunity <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(down == 1) %>% summarize(FarthestFPos = min(NewFPos, na.rm = TRUE)) %>% mutate(ScoringOpportunity = ifelse(FarthestFPos <=40, 1, 0)) %>% select(-FarthestFPos)
+
+RestofDefDriveThings <- FBSDef %>% group_by(uniqueOpponentID) %>% filter(drive_play == 1) %>% select(game_id, OffTeamName, DefTeamName, drive, NewFPos, drive_start_event, drive_end_event, score_differential, drive_end_field_position,
+                                                                                                     DrivePoints, two_minute, DriveSuccess, DriveReturnStart) %>% mutate(ScoringDrive = ifelse(DrivePoints > 0, 1, 0))
+
+DefenseDriveDataFrame <- merge(MostDefDriveThings, RestofDefDriveThings, all=TRUE) %>% merge(DefDriveBigPlays, all = TRUE) %>% merge(FirstDownEfficiency, all = TRUE) %>% merge(SecondDownEfficiency, all = TRUE) %>%
+  merge(ThirdDownEfficiency, all = TRUE) %>% merge(ScoringOpportunity, all = TRUE)
+
+
+```
+
+## Offense Drives
+```{r, echo= FALSE, warning=FALSE, message = FALSE}
+UVAOffGamePlay <- OffenseDriveDataFrame %>% filter(OffTeamName == "Virginia" & game_id == "17994") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>% mutate(NewFPos = ifelse(NewFPos > 50, paste0("-", 100-NewFPos), ifelse(NewFPos < 50, paste0("+", NewFPos), "50"))) 
+
+
+
+tbl <- reactable(UVAOffGamePlay,
+                 columns = list(
+                   drive = colDef(align = "center", name = "#", na = "–"),
+                   NewFPos = colDef(align = "center", name = "Starting FPos", na = "–"),
+                   Plays = colDef(defaultSortOrder = "desc", align = "center", name = "Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Yards = colDef(defaultSortOrder = "desc", align = "center", name = "Yards", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   YPP = colDef(defaultSortOrder = "desc", align = "center", name = "YPP", format = colFormat(digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Efficiency = colDef(defaultSortOrder = "desc", align = "center", name = "Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   FirstDowns = colDef(defaultSortOrder = "desc", align = "center", name = "1st Downs", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }), 
+                   BigPlays = colDef(defaultSortOrder = "desc", align = "center", name = "Big Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Havoc = colDef(align = "center", name = "Havoc Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   drive_end_event = colDef(defaultSortOrder = "desc", align = "center", na = "–", name = "Drive End Event", width = 135),
+                   FirstDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "1st Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   SecondDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "2nd Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   ThirdDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "3rd Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   ScoringOpportunity = colDef(defaultSortOrder = "desc", align = "center", name = "Scoring Chance", na = "–")),
+                 bordered = TRUE,
+                 highlight = TRUE,
+                 searchable = TRUE,
+                 pageSizeOptions = c(25, 50, 100), 
+                 defaultPageSize = 25,
+                 striped = TRUE,
+                 defaultSorted = "drive",
+          rowStyle = function(index) {
+            if (UVAOffGamePlay[index, "drive_end_event"] == "TOUCHDOWN") {
+              list(background = "#33CC66")
+            } else if(UVAOffGamePlay[index, "drive_end_event"] == "FIELD GOAL") {
+              list(background = "#FFFF00")
+            } else if(str_detect(UVAOffGamePlay[index, "drive_end_event"], c("INTERCEPTION", "FUMBLE"))) {
+              list(background = "#FF2400")
+            }})
+
+
+
+
+div(class = "standings",
+    tbl
+)
+```
+
+## Defense Drives
+```{r, echo= FALSE, warning=FALSE, message = FALSE}
+UVADefGamePlay <- DefenseDriveDataFrame %>% filter(DefTeamName == "Virginia" & game_id == "17994") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>%
+  mutate(NewFPos = ifelse(NewFPos > 50, paste0("-", 100-NewFPos), ifelse(NewFPos < 50, paste0("+", NewFPos), "50"))) 
+
+
+
+
+tbl <- reactable(UVADefGamePlay,
+                 columns = list(
+                   drive = colDef(align = "center", name = "#", na = "–"),
+                   NewFPos = colDef(align = "center", name = "Starting FPos", na = "–"),
+                   Plays = colDef(defaultSortOrder = "desc", align = "center", name = "Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Yards = colDef(defaultSortOrder = "desc", align = "center", name = "Yards", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   YPP = colDef(defaultSortOrder = "desc", align = "center", name = "YPP", format = colFormat(digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Efficiency = colDef(defaultSortOrder = "desc", align = "center", name = "Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   FirstDowns = colDef(defaultSortOrder = "desc", align = "center", name = "1st Downs", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }), 
+                   BigPlays = colDef(defaultSortOrder = "desc", align = "center", name = "Big Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   Havoc = colDef(align = "center", name = "Havoc Plays", na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   drive_end_event = colDef(defaultSortOrder = "desc", align = "center", na = "–", name = "Drive End Event", width = 135),
+                   FirstDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "1st Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   SecondDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "2nd Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   ThirdDownEfficiency = colDef(defaultSortOrder = "desc", align = "center", name = "3rd Down Eff", format = colFormat(percent = TRUE, digits = 1), na = "–", footer = function(values, digits = 1) {
+                     htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
+                   }),
+                   ScoringOpportunity = colDef(defaultSortOrder = "desc", align = "center", name = "Scoring Chance", na = "–")),
+                 bordered = TRUE,
+                 highlight = TRUE,
+                 searchable = TRUE,
+                 pageSizeOptions = c(25, 50, 100), 
+                 defaultPageSize = 25,
+                 striped = TRUE,
+                 defaultSorted = "drive",
+          rowStyle = function(index) {
+            if (UVADefGamePlay[index, "drive_end_event"] == "TOUCHDOWN") {
+              list(background = "#FF2400")
+            } else if(UVADefGamePlay[index, "drive_end_event"] == "FIELD GOAL") {
+              list(background = "#FA8128")
+            } else if(str_detect(UVADefGamePlay[index, "drive_end_event"], c("INTERCEPTION", "FUMBLE"))) {
+              list(background = "#33CC66")
+            }})
+
+
+div(class = "standings",
+    tbl
+)
+```
+
+
+```{css, echo=FALSE}
+.border-left {
+  border-left: 3px solid #555;
+}
+
+.standings {
+  font-family: Karla, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 18px;
+}
+
+.title h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.header {
+  border-bottom-color: #555;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.flag {
+  margin-right: 8px;
+  height: 35px;
+}
+
+.team-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.record {
+  margin-left: 5px;
+  color: #999;
+  font-size: 13px;
+}
+
+.record1 {
+  font-size: 14px;
+  text-align: middle;
+}
+
+h1.title {
+  font-size: 38px;
+  font-family: Karla, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-align: center;
+}
+
+.header1 {
+  padding: 20px;
+  text-align: left;
+  background: #4d0099;
+  color: white;
+  font-size: 30px;
+  font-family: Karla, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+```
+
