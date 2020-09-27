@@ -1875,7 +1875,7 @@ div(class = "standings",
 
 ```
 
-# No Blitz Plays
+## No Blitz Plays
 ```{r, echo= FALSE, warning=FALSE, message = FALSE}
 NoBlitzPlaysOff = FBSOff %>% filter(blitz_dog == 0) %>% group_by(OffTeamName) %>% 
   summarize(NoBlitzPlaysOff = n(), NoBlitzPlaysOffEffPlays = sum(Efficient == 1, na.rm = TRUE), NoBlitzPlaysOffYPP = mean(Gain.Loss, na.rm = TRUE)) %>% 
