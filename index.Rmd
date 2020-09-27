@@ -16,6 +16,7 @@ Welcome to the Virginia Cavaliers website. Here is where reports and analysis wi
 #### **Interactive Charts**  
 * [Pass Charts](https://alexcstern.shinyapps.io/pass_charts/){target="_blank"}
 * [Run Charts](https://alexcstern.shinyapps.io/run_sonars/){target="_blank"}
+* [Win Probability Charts](https://alexcstern.shinyapps.io/win_prob_website/){target="_blank"}
 <br>  
  
   
