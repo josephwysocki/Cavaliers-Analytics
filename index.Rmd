@@ -23,7 +23,7 @@ Welcome to the Virginia Cavaliers website. This site is where reports and analys
 #### **2020 Opponents**
 
 <img width="225" alt="Duke" src="pictures/duke2.png">
-<img width="225" alt="Clemson" src="pictures/Clemson.png">
+<img width="225" alt="Clemson" src="pictures/Clemson2.png">
 <img width="225" alt="NC State" src="pictures/nsstate.png">
 <img width="225" alt="Wake Forest" src="pictures/wake.png">
 <img width="225" alt="Miami" src="pictures/miami.png">

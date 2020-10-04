@@ -7,7 +7,7 @@ navbar:
       - text: "Home"
         href: index.html
       - text: "2020 NCAA Stats"
-        href: stat_spreadsheet_new2.html
+        href: stat_tables_2020.html
       - text: "2019 NCAA Stats"
         href: stat_spreadsheet_2019new.html
       - text: "Drive Summaries"
