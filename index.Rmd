@@ -3,12 +3,12 @@
 
 ## <img width="75" alt="SabreV " src="pictures/UVA.png"> **Virginia Cavaliers Analytics** 
 
-Welcome to the Virginia Cavaliers website. Here is where reports and analysis will be housed for the duration of the 2020 season. 
+Welcome to the Virginia Cavaliers website. This site is where reports and analysis will be housed for the duration of the 2020 season. 
 <br>
  
 
 #### **Site Navigation**  
-* [2020 NCAA Stats](stat_spreadsheet_new2.html)
+* [2020 NCAA Stats](stat_tables_2020.html)
 * [2019 NCAA Stats](stat_spreadsheet_2019new.html)
 * [Drive Summaries](drive_stats.html)
 <br>  
