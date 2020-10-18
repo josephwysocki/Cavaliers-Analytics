@@ -236,7 +236,7 @@ DefenseDriveDataFrame <- merge(MostDefDriveThings, RestofDefDriveThings, all=TRU
 
 ## Offense Drives
 ```{r, echo= FALSE, warning=FALSE, message = FALSE}
-UVAOffGamePlay <- OffenseDriveDataFrame %>% filter(OffTeamName == "Virginia" & game_id == "17826") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>% mutate(NewFPos = ifelse(NewFPos > 50, paste0("-", 100-NewFPos), ifelse(NewFPos < 50, paste0("+", NewFPos), "50"))) 
+UVAOffGamePlay <- OffenseDriveDataFrame %>% filter(OffTeamName == "Virginia" & game_id == "17857") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>% mutate(NewFPos = ifelse(NewFPos > 50, paste0("-", 100-NewFPos), ifelse(NewFPos < 50, paste0("+", NewFPos), "50"))) 
 
 
 
