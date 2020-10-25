@@ -302,7 +302,7 @@ div(class = "standings",
 
 ## Defense Drives
 ```{r, echo= FALSE, warning=FALSE, message = FALSE}
-UVADefGamePlay <- DefenseDriveDataFrame %>% filter(DefTeamName == "Virginia" & game_id == "17797") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>%
+UVADefGamePlay <- DefenseDriveDataFrame %>% filter(DefTeamName == "Virginia" & game_id == "17895") %>% select(drive, NewFPos, Plays, Yards, YPP, Efficiency, FirstDowns, BigPlays, Havoc, drive_end_event, FirstDownEfficiency, SecondDownEfficiency, ThirdDownEfficiency, ScoringOpportunity) %>%
   mutate(NewFPos = ifelse(NewFPos > 50, paste0("-", 100-NewFPos), ifelse(NewFPos < 50, paste0("+", NewFPos), "50"))) 
 
 
