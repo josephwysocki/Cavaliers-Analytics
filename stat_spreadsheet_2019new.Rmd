@@ -22,7 +22,7 @@ sticky_style <- list(position = "sticky", left = 0, background = "#fff", zIndex 
 col_pal_good <- function(x) rgb(colorRamp(c("red3", "white", "forestgreen"))(x), maxColorValue = 255)
 col_pal_bad <- function(x) rgb(colorRamp(c("forestgreen", "white", "red3"))(x), maxColorValue = 255)
 
-pbp <- read.csv("C:/Users/Jospeh Wysocki/Documents/UVA/PFF_pbp.csv")
+pbp <- read.csv("C:/Users/student/Documents/PFF_pbp.csv")
 
 pbp$field_position <- as.numeric(pbp$field_position)
 pbp$NewFPos = ifelse(pbp$field_position < 0, 100+pbp$field_position, pbp$field_position)
