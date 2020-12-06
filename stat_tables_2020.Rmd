@@ -1433,204 +1433,6 @@ div(class = "standings",
 
 ```
 
-## Off Pers R/P
-```{r, echo= FALSE, warning=FALSE, message = FALSE}
-FBSOffPers <- FBSOff %>% group_by(OffTeamName, offensive_personnel_basic) %>% summarize(Plays = n(), YPP = mean(Gain.Loss, na.rm = TRUE), EffPerc = mean(Efficient, na.rm = TRUE), RunPlays = sum(run_pass == "R", na.rm = TRUE), YdsPerRush = mean(Gain.Loss[run_pass == "R"], na.rm = TRUE), PassPlays = sum(run_pass == "P", na.rm = TRUE), YdsPerPass = mean(Gain.Loss[run_pass == "P"], na.rm = TRUE)) %>%
-  mutate(RunPerc = RunPlays / Plays, PassPerc = PassPlays/Plays) %>% relocate(RunPerc, .after = YdsPerRush) %>% rename(TeamName = OffTeamName)
-
-
-FBSOffPers <- merge(FBSOffPers, dat1, all.x = TRUE) %>% select(-TeamCode, -PrimaryColor, -SecondaryColor) %>% relocate(teamcode, .after = TeamName) %>% merge(GamesPlayed, all.x = TRUE) %>% relocate(GamesPlayed, .after = teamcode)
-
-
-
-tbl <- reactable(FBSOffPers,
-                 columns = list(
-                   teamcode = colDef(align = "center", width = 75,
-                                     style = sticky_style,
-                                     filterable = FALSE,
-                                     name = "",
-                                     headerStyle = sticky_style,
-                                     cell = function(value) {
-                                       div(
-                                         class = "team",
-                                         img(class = "flag", alt = paste(value, "logo"), src = sprintf("http://a.espncdn.com/i/teamlogos/ncaa/500/%s.png", value))
-                                       )
-                                     }
-                   ),
-                   TeamName = colDef(name = "Team", width = 150, filterable = TRUE, class = "team-name", align = "left"),
-                   
-                   GamesPlayed = colDef(defaultSortOrder = "desc", name = "Games", width = 100, filterable = FALSE, align = "center"),
-                   
-                   Conf = colDef(name = "Conf", width = 100, filterable = TRUE, class = "team-name", align = "center"),
-                   
-                   offensive_personnel_basic = colDef(name = "Offensive Personnel", style = sticky_style, headerStyle = sticky_style, width = 125, class = "team-name", align = "left"),
-                  
-                   Plays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Plays"),
-                   RunPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Run Plays"),
-                   PassPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Pass Plays"),
-                   
-                    YPP = colDef(defaultSortOrder = "desc", name = "YPP", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                     },
-                     style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSOffPers$YPP, na.rm = TRUE))/(max(FBSOffPers$YPP, na.rm = TRUE) - min(FBSOffPers$YPP, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   YdsPerRush = colDef(defaultSortOrder = "desc", name = "Yds / Rush", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSOffPers$YdsPerRush, na.rm = TRUE))/(max(FBSOffPers$YdsPerRush, na.rm = TRUE) - min(FBSOffPers$YdsPerRush, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   YdsPerPass = colDef(defaultSortOrder = "desc", name = "Yds / Pass", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSOffPers$YdsPerPass, na.rm = TRUE))/(max(FBSOffPers$YdsPerPass, na.rm = TRUE) - min(FBSOffPers$YdsPerPass, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   RunPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Run %", format = colFormat(percent = TRUE, digits = 1)), 
-                    
-                   PassPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Pass %", format = colFormat(percent = TRUE, digits = 1)),
-                   
-                   EffPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Eff %", format = colFormat(percent = TRUE, digits = 1), 
-                       footer = function(values, digits = 1) {
-                          htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))},
-                          style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSOffPers$EffPerc, na.rm = TRUE))/(max(FBSOffPers$EffPerc, na.rm = TRUE) - min(FBSOffPers$EffPerc, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)})),
-                 
-                 bordered = TRUE,
-                 highlight = TRUE,
-                 searchable = TRUE,
-                 showPageSizeOptions = TRUE, 
-                 pageSizeOptions = c(25, 50, 100), 
-                 defaultPageSize = 25,
-                 striped = TRUE)
-
-div(class = "standings",
-  tbl
-)
-```
-
-## Def Pers R/P
-```{r, echo= FALSE, warning=FALSE, message = FALSE}
-FBSDefPers <- FBSDef %>% group_by(DefTeamName, offensive_personnel_basic) %>% summarize(Plays = n(), YPP = mean(Gain.Loss, na.rm = TRUE), EffPerc = mean(Efficient, na.rm = TRUE), RunPlays = sum(run_pass == "R", na.rm = TRUE), YdsPerRush = mean(Gain.Loss[run_pass == "R"], na.rm = TRUE), PassPlays = sum(run_pass == "P", na.rm = TRUE), YdsPerPass = mean(Gain.Loss[run_pass == "P"], na.rm = TRUE)) %>%
-  mutate(RunPerc = RunPlays / Plays, PassPerc = PassPlays/Plays) %>% relocate(RunPerc, .after = YdsPerRush) %>% rename(TeamName = DefTeamName)
-
-
-FBSDefPers <- merge(FBSDefPers, dat1, all.x = TRUE) %>% select(-TeamCode, -PrimaryColor, -SecondaryColor) %>% relocate(teamcode, .after = TeamName) %>% merge(GamesPlayed, all.x = TRUE) %>% relocate(GamesPlayed, .after = teamcode)
-
-
-
-tbl <- reactable(FBSDefPers,
-                 columns = list(
-                   teamcode = colDef(align = "center", width = 75,
-                                     style = sticky_style,
-                                     filterable = FALSE,
-                                     name = "",
-                                     headerStyle = sticky_style,
-                                     cell = function(value) {
-                                       div(
-                                         class = "team",
-                                         img(class = "flag", alt = paste(value, "logo"), src = sprintf("http://a.espncdn.com/i/teamlogos/ncaa/500/%s.png", value))
-                                       )
-                                     }
-                   ),
-                   TeamName = colDef(name = "Def Team", width = 150, filterable = TRUE, class = "team-name", align = "left"),
-                   
-                   GamesPlayed = colDef(defaultSortOrder = "desc", name = "Games", width = 100, filterable = FALSE, align = "center"),
-                   
-                   Conf = colDef(name = "Conf", width = 100, filterable = TRUE, class = "team-name", align = "center"),
-                   
-                   offensive_personnel_basic = colDef(name = "Offensive Personnel", style = sticky_style, headerStyle = sticky_style, width = 125, class = "team-name", align = "left"),
-                  
-                   Plays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Plays"),
-                   RunPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Run Plays"),
-                   PassPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Pass Plays"),
-                   
-                    YPP = colDef(defaultSortOrder = "desc", name = "YPP", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                     },
-                     style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSDefPers$YPP, na.rm = TRUE))/(max(FBSDefPers$YPP, na.rm = TRUE) - min(FBSDefPers$YPP, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   YdsPerRush = colDef(defaultSortOrder = "desc", name = "Yds / Rush", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSDefPers$YdsPerRush, na.rm = TRUE))/(max(FBSDefPers$YdsPerRush, na.rm = TRUE) - min(FBSDefPers$YdsPerRush, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   YdsPerPass = colDef(defaultSortOrder = "desc", name = "Yds / Pass", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSDefPers$YdsPerPass, na.rm = TRUE))/(max(FBSDefPers$YdsPerPass, na.rm = TRUE) - min(FBSDefPers$YdsPerPass, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)}),
-                   
-                   RunPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Run %", format = colFormat(percent = TRUE, digits = 1)), 
-                    
-                   PassPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Pass %", format = colFormat(percent = TRUE, digits = 1)),
-                   
-                   EffPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Eff %", format = colFormat(percent = TRUE, digits = 1), 
-                       footer = function(values, digits = 1) {
-                          htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))},
-                          style = function(value) {
-                       if (is.na(value)) {
-                         color <- "#A9A9A9"}
-                       else { normalized <- (value - min(FBSDefPers$EffPerc, na.rm = TRUE))/(max(FBSDefPers$EffPerc, na.rm = TRUE) - min(FBSDefPers$EffPerc, na.rm = TRUE))
-                        color <- col_pal_good(normalized)}
-                        list(background = color)})),
-                 
-                 bordered = TRUE,
-                 highlight = TRUE,
-                 searchable = TRUE,
-                 showPageSizeOptions = TRUE, 
-                 pageSizeOptions = c(25, 50, 100), 
-                 defaultPageSize = 25,
-                 striped = TRUE)
-
-div(class = "standings",
-  tbl
-)
-```
-
 ## # of Pass Blockers
 ```{r, echo= FALSE, warning=FALSE, message = FALSE}
 PassBlockersOff <- FBSOff %>% filter(run_pass == "P") %>% group_by(OffTeamName, pass_blocking_number) %>% summarize(OffPassBlockPlays = n(), OffPassBlockEfficiency = sum(Efficient, na.rm = TRUE), OffPassBlockEfficiencyPerc = mean(Efficient, na.rm = TRUE), OffPassBlockYPP = mean(Gain.Loss, na.rm = TRUE)) %>% rename(TeamName = OffTeamName)
@@ -3080,63 +2882,33 @@ div(class = "standings",
 
 ## UVA Off Personnel Group
 ```{r, echo= FALSE, warning=FALSE, message = FALSE}
-VirginiaPers <- FBSOff %>% filter(OffTeamName == "Virginia") %>% group_by(offensive_personnel_basic) %>% summarize(Plays = n(), YPP = mean(Gain.Loss, na.rm = TRUE), EffPerc = mean(Efficient, na.rm = TRUE), RunPlays = sum(run_pass == "R", na.rm = TRUE), YdsPerRush = mean(Gain.Loss[run_pass == "R"], na.rm = TRUE), PassPlays = sum(run_pass == "P", na.rm = TRUE), YdsPerPass = mean(Gain.Loss[run_pass == "P"], na.rm = TRUE)) %>%
-  mutate(RunPerc = RunPlays / Plays, PassPerc = PassPlays/Plays) %>% relocate(RunPerc, .after = YdsPerRush)
-
-
-
+VirginiaPers <- FBSOff %>% filter(OffTeamName == "Virginia") %>% group_by(offensive_personnel_basic) %>% summarize(OffPersPlays = n(), OffPersPlaysEfficiency = sum(Efficient, na.rm = TRUE), OffPersPlaysEfficiencyPerc = mean(Efficient, na.rm = TRUE), OffPersPlaysYPP = mean(Gain.Loss, na.rm = TRUE))
 
 VirginiaPers <- na.omit(VirginiaPers)
 tbl <- reactable(VirginiaPers,
                  columns = list(
                    offensive_personnel_basic = colDef(name = "Offensive Personnel", style = sticky_style, headerStyle = sticky_style, width = 125, class = "team-name", align = "left"),
                   
-                   Plays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Plays"),
-                   RunPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Run Plays"),
-                   PassPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Pass Plays"),
+                   OffPersPlays = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Plays"),
                    
-                    YPP = colDef(defaultSortOrder = "desc", name = "YPP", align = "center", width = 75,
+                   OffPersPlaysEfficiency = colDef(defaultSortOrder = "desc", align = "center",width = 75,name = "Eff Plays"),
+                   
+                    OffPersPlaysYPP = colDef(defaultSortOrder = "desc", name = "YPP", align = "center", width = 75,
                     format = colFormat(digits = 1), 
                     footer = function(values) {
                        htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
                         },
                       style = function(value){
-                      normalized <- (value - min(VirginiaPers$YPP))/(max(VirginiaPers$YPP) - min(VirginiaPers$YPP))
+                      normalized <- (value - min(VirginiaPers$OffPersPlaysYPP))/(max(VirginiaPers$OffPersPlaysYPP) - min(VirginiaPers$OffPersPlaysYPP))
                       color <- col_pal_good(normalized)
                       list(background = color)
                        }),
                    
-                   YdsPerRush = colDef(defaultSortOrder = "desc", name = "Yds / Rush", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value){
-                      normalized <- (value - min(VirginiaPers$YdsPerRush))/(max(VirginiaPers$YdsPerRush) - min(VirginiaPers$YdsPerRush))
-                      color <- col_pal_good(normalized)
-                      list(background = color)
-                       }),
-                   
-                   YdsPerPass = colDef(defaultSortOrder = "desc", name = "Yds / Pass", align = "center", width = 75,
-                    format = colFormat(digits = 1), 
-                    footer = function(values) {
-                       htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))
-                        },
-                      style = function(value){
-                      normalized <- (value - min(VirginiaPers$YdsPerPass))/(max(VirginiaPers$YdsPerPass) - min(VirginiaPers$YdsPerPass))
-                      color <- col_pal_good(normalized)
-                      list(background = color)
-                       }),
-                   
-                   RunPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Run %", format = colFormat(percent = TRUE, digits = 1)), 
-                    
-                   PassPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Pass %", format = colFormat(percent = TRUE, digits = 1)),
-                   
-                   EffPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Eff %", format = colFormat(percent = TRUE, digits = 1), 
+                   OffPersPlaysEfficiencyPerc = colDef(defaultSortOrder = "desc", width = 75, align = "center", name = "Eff %", format = colFormat(percent = TRUE, digits = 1), 
                        footer = function(values, digits = 1) {
                           htmltools::tags$b(sprintf("%.1f", mean(values, na.rm = TRUE)))},
                           style = function(value){
-                            normalized <- (value - min(VirginiaPers$EffPerc))/(max(VirginiaPers$EffPerc) - min(VirginiaPers$EffPerc))
+                            normalized <- (value - min(VirginiaPers$OffPersPlaysEfficiencyPerc))/(max(VirginiaPers$OffPersPlaysEfficiencyPerc) - min(VirginiaPers$OffPersPlaysEfficiencyPerc))
                             color <- col_pal_good(normalized)
                              list(background = color)})),
                  
