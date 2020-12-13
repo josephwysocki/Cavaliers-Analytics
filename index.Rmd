@@ -30,6 +30,5 @@ Welcome to the Virginia Cavaliers website. This site is where reports and analys
 <img width="225" alt="UNC" src="pictures/UNC.png">
 <img width="225" alt="Louisville" src="pictures/louisville.png">
 <img width="225" alt="Abilene Christian" src="pictures/acu.png">
-<img width="225" alt="Florida State" src="pictures/fsu.png">
 <img width="225" alt="Boston College" src="pictures/bc.png">
 <img width="225" alt="Virginia Tech" src="pictures/VT.png">
